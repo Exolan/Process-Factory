@@ -58,6 +58,23 @@ function checkAllPlayersReady () {
     }
 }
 
+function checkAllRolesSelected () {
+    const playersCount = players.size
+    const allRoles = Array.from(roles.values())
+
+    let count = 0
+
+    for (let i = 0; i<allRoles.length; i++) {
+        if (allRoles[i].isSelect) {
+            count++
+        }
+
+        if (count === playersCount) {
+            io.emit('startGame')
+        }
+    }
+}
+
 app.use(express.static(path.join(__dirname, '../client')));
 
 io.on('connection', (socket) => {
@@ -90,12 +107,21 @@ io.on('connection', (socket) => {
         }
         console.log(`Пользователь ${socketID} выбрал роль ${roleKey}`)
         io.emit('cardsUpdate', Array.from(roles.entries()))
+        checkAllRolesSelected()
     })
 
     socket.on('disconnect', ()=>{
         console.log('Пользователь отключился')
+        const player = players.get(socketID)
+        
+        if (player && player.role) {
+            const role = roles.get(player.role)
+            if (role) role.isSelect = false
+        }
+    
         players.delete(socketID)
         io.emit('lobbyUpdate', Array.from(players.values()))
+        io.emit('cardsUpdate', Array.from(roles.entries()))
     })
 })
 
